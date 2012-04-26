@@ -1,0 +1,21 @@
+{
+  "author": "Einar Otto Stangvik <einaros@gmail.com>",
+  "name": "cqrs.js",
+  "version": "0.0.1",
+  "repository": {
+    "url": ""
+  },
+  "dependencies": {
+    "mongoose": "latest"
+  },
+  "devDependencies": {
+    "mocha": "latest",
+    "expect.js": "latest",
+    "express": "2.5.9",
+    "mongodb": "latest"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
+}
