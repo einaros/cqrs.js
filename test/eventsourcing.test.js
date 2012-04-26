@@ -10,7 +10,7 @@ describe('EventSourcing', function() {
     describe('Creating Objects', function() {
       it('creates object using object dictionary, applies a creation event with name and id', function() {
         var store = {
-          loadEvents: function(aggregateId, sinceVersion, cb) {},
+          loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {},
           saveEvents: function(aggregateType, aggregateId, expectedVersion, events, cb) {}
         };
 
@@ -38,7 +38,7 @@ describe('EventSourcing', function() {
       it('restores objects by replay event stream', function(done) {
         // Dummy event store
         var store = {
-          loadEvents: function(aggregateId, sinceVersion, cb) {
+          loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {
             cb([
               Event.make('NewObjectType'),
               Event.make('SetValue', {value: 100}),
@@ -84,7 +84,7 @@ describe('EventSourcing', function() {
 
           // Dummy event store
           var store = {
-            loadEvents: function(aggregateId, sinceVersion, cb) {
+            loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {
               cb([
                 Event.make('NewObjectType'),
                 Event.make('SetValue', {value: 100}),
@@ -142,7 +142,7 @@ describe('EventSourcing', function() {
 
           // Dummy event store
           var store = {
-            loadEvents: function(aggregateId, sinceVersion, cb) {
+            loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {
               if (++loadEventsCalled == 1) {
                 expect(sinceVersion).to.equal(-1);
                 cb([
@@ -223,7 +223,7 @@ describe('EventSourcing', function() {
 
           // Dummy event store
           var store = {
-            loadEvents: function(aggregateId, sinceVersion, cb) {
+            loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {
               if (++loadEventsCalled == 1) {
                 expect(sinceVersion).to.equal(-1);
                 cb([
