@@ -87,7 +87,7 @@ AggregateRoot.defineEventHandler(Person, 'PersonRenamed', function(args) {
 
 app.get('/Get/Persons', function(req, res) {
   PersonModel.find({}, function(error, persons) {
-    res.end(persons);
+    res.end(JSON.stringify(persons));
   });
 });
 

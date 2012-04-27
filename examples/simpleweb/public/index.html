@@ -2,12 +2,27 @@
   <head>
     <script src='/jq.js'></script>
     <script>
-$(function() {
-  $.post('/Person/Create', {name: 'foobar'});
-});
+      function init() {
+        $('#output').empty();
+        $.get('/Get/Persons', function(people) {
+          people = JSON.parse(people);
+          for (var i = 0, l = people.length; i < l; ++i) {
+            var person = people[i];
+            $('#output').append('<input type="text" value="' + person.name + '"><button onclick="rename(this, \'' + person.id + '\', ' + person.version + ')">Rename</button>');
+          }
+        });
+      }
+
+      function rename(btn, id, version) {
+        $.post('/Person/Rename', {id: id, name: $(btn).prev().val(), version: version}, function() {
+          init();
+        });
+      }
+
+      $(init);
     </script>
   </head>
   <body>
-
+    <div id="output"></div>
   </body>
 </html>
