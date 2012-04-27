@@ -1,6 +1,6 @@
-# node-cqrs
+# cqrs.js
 
-node-cqrs is a library which aims to make it simple to implement CQRS (Command/Query Responsibility Segregation) based applications on the node.js platform.
+cqrs.js is a library which aims to make it simple to implement CQRS (Command/Query Responsibility Segregation) based applications on the node.js platform.
 
 Implementing CQRS usually, but not necessarily, involves event sourcing.
 
@@ -18,4 +18,4 @@ When events for an aggregate are saved, the event store first has to veirfy that
 
 Commands can be batched from client to server, simply by having the client load an aggregate once, execute all commands and only then to save it back to the repository.
 
-Cross-aggregate command batches isn't currently within the scope of node-cqrs.
+Cross-aggregate command batches isn't currently within the scope of cqrs.js.
