@@ -8,7 +8,9 @@ var express = require('express')
   , Bus = require('../../lib/bus')
   , util = require('util')
   , uuid = require('node-uuid')
-  , events = require('events');
+  , events = require('events')
+  , SSE = require('sse.js')
+  , querystring = require('querystring');
 
 /**
  * Application setup
@@ -24,7 +26,7 @@ app.use(express.static(__dirname + '/public'));
  */
 
 var bus = new Bus();
-bus.on('PersonCreated', function(type, id, version, person) {
+bus.on('PersonCreated', function(event, type, id, version, person) {
   console.log('Person created: %s', person.name);
   var personModel = new PersonModel();
   personModel.id = id;
@@ -32,13 +34,36 @@ bus.on('PersonCreated', function(type, id, version, person) {
   personModel.version = version;
   personModel.save();
 });
-bus.on('PersonRenamed', function(type, id, version, person) {
+bus.on('PersonRenamed', function(event, type, id, version, person) {
   console.log('Person renamed: %s', person.name);
   PersonModel.findOne({id: id}, function(error, personModel) {
     if (error) throw error;
     personModel.name = person.name;
     personModel.version = version;
     personModel.save();
+  });
+});
+
+/**
+ * Optional per-aggregate push of events to client via Server-Sent Events
+ */
+
+var sse = new SSE(app);
+sse.on('connection', function(client, url) {
+  var qs = querystring.parse(url.query);
+  var id = qs.id;
+  var cb = function(eventType, aggregateType, aggregateId, version, data) {
+    client.send(JSON.stringify({
+      eventType: eventType,
+      aggregateType: aggregateType,
+      aggregateId: aggregateId,
+      version: version,
+      data: data
+    }));
+  }
+  bus.onAggregateId(id, cb);
+  client.on('close', function() {
+    bus.removeAggregateIdListener(id, cb);
   });
 });
 
@@ -106,8 +131,11 @@ app.post('/Person/Rename', function(req, res) {
   repository.get('Person', req.body.id, function(person) {
     person.rename(req.body.name);
     repository.save('Person',req.body.id, person, req.body.version, function(err) {
-      if (err) console.log(err);
-      res.end('ok');
+      if (err) {
+        console.error(err);
+        res.end(JSON.stringify({ok: 0, error: err.message}));
+      }
+      else res.end(JSON.stringify({ok: 1}));
     });
   });
 });

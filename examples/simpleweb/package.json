@@ -1,0 +1,18 @@
+{
+  "author": "Einar Otto Stangvik <einaros@gmail.com>",
+  "name": "cqrs.js simple example",
+  "version": "0.0.1",
+  "repository": {
+    "url": ""
+  },
+  "dependencies": {
+    "mongoose": "latest",
+    "express": "2.5.9",
+    "node-uuid": "latest"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
+}

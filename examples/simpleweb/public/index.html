@@ -1,21 +1,67 @@
 <html>
   <head>
+    <style>
+      body {
+        display: -webkit-box;
+        -webkit-box-pack: center;
+        -webkit-box-align: center;
+      }
+      .box {
+        height: 300px;
+        width: 300px;
+        border: 2px solid #aaa;
+        padding: 10px;
+        margin: 20px;
+        border-radius: 10px;
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+    </style>
     <script src='/jq.js'></script>
     <script>
       function init() {
-        $('#output').empty();
+        $('.controls').empty();
+        $('.events').empty();
         $.get('/Get/Persons', function(people) {
           people = JSON.parse(people);
           for (var i = 0, l = people.length; i < l; ++i) {
             var person = people[i];
-            $('#output').append('<input type="text" value="' + person.name + '"><button onclick="rename(this, \'' + person.id + '\', ' + person.version + ')">Rename</button>');
+
+            // Subscribe to changes for this person
+            var es = new EventSource('/sse?id=' + person.id);
+            es.onmessage = function(e) {
+              var data = JSON.parse(e.data);
+              processEvent(data);
+              $('.events').append($('<div>').text(data.eventType + ': ' + data.data.name));
+            };
+
+            // Add rename control for this person
+            var input = $('<input type="text">');
+            input.attr('value', person.name);
+            input.attr('data-id', person.id);
+            input.attr('data-version', person.version);
+            $('.controls').append(input).append('<button onclick="rename(this)">Rename</button>');
           }
         });
       }
 
-      function rename(btn, id, version) {
-        $.post('/Person/Rename', {id: id, name: $(btn).prev().val(), version: version}, function() {
-          init();
+      function processEvent(e) {
+        if (e.eventType == 'PersonRenamed') {
+          var input = $('input[data-id="' + e.aggregateId + '"]');
+          input.attr('value', e.data.name);
+          input.attr('data-version', e.version);
+        }
+      }
+
+      function rename(btn) {
+        var input = $(btn).prev();
+        var id = input.attr('data-id');
+        var version = input.attr('data-version');
+        $.post('/Person/Rename', {id: id, name: input.val(), version: version}, function(result) {
+          result = JSON.parse(result);
+          if (result.ok == 0) {
+            alert('Error: ' + result.error);
+          }
         });
       }
 
@@ -23,6 +69,7 @@
     </script>
   </head>
   <body>
-    <div id="output"></div>
+    <div class="box controls"></div>
+    <div class="box events"></div>
   </body>
 </html>
