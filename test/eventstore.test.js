@@ -1,6 +1,7 @@
 var expect = require('expect.js')
   , EventStore = require('../lib/eventStore')
   , Event = require('../lib/event')
+  , Bus = require('../lib/bus')
   , util = require('util')
   , mongoose = require('mongoose')
   , Db = require('mongodb').Db
@@ -82,14 +83,14 @@ describe('EventStore', function() {
   });
 
   it('publishes events if an eventpublisher is defined, using the event\'s type param', function(done) {
-    var publisher = new events.EventEmitter();
+    var publisher = new Bus();
     var store = new EventStore(publisher);
     var received = [];
-    publisher.on('foobar', function(type, id, version, data) {
-      received.push({type: type, id: id, version: version, data: data});
+    publisher.on('foobar', function(type, descriptor, event) {
+      received.push({type: descriptor.aggregateType, id: descriptor.aggregateId, version: descriptor.aggregateVersion, data: event});
     });
-    publisher.on('barbar', function(type, id, version, data) {
-      received.push({type: type, id: id, version: version, data: data});
+    publisher.on('barbar', function(type, descriptor, event) {
+      received.push({type: descriptor.aggregateType, id: descriptor.aggregateId, version: descriptor.aggregateVersion, data: event});
     });
     store.saveEvents('SomeType', 100, -1, [Event.make('foobar', {a: 'data'}), Event.make('barbar', {b: 'more'})], function(error) {
       expect(received.length).to.equal(2);
