@@ -26,20 +26,20 @@ app.use(express.static(__dirname + '/public'));
  */
 
 var bus = new Bus();
-bus.on('PersonCreated', function(event, type, id, version, person) {
+bus.on('PersonCreated', function(event, descriptor, person) {
   console.log('Person created: %s', person.name);
   var personModel = new PersonModel();
-  personModel.id = id;
+  personModel.id = descriptor.aggregateId;
   personModel.name = person.name;
-  personModel.version = version;
+  personModel.version = descriptor.aggregateVersion;
   personModel.save();
 });
-bus.on('PersonRenamed', function(event, type, id, version, person) {
-  console.log('Person renamed: %s', person.name);
-  PersonModel.findOne({id: id}, function(error, personModel) {
+bus.on('PersonRenamed', function(event, descriptor, person) {
+  PersonModel.findOne({id: descriptor.aggregateId}, function(error, personModel) {
     if (error) throw error;
+    console.log('Person renamed: %s => %s', personModel.name, person.name);
     personModel.name = person.name;
-    personModel.version = version;
+    personModel.version = descriptor.aggregateVersion;
     personModel.save();
   });
 });
@@ -52,16 +52,16 @@ var sse = new SSE(app);
 sse.on('connection', function(client, url) {
   var qs = querystring.parse(url.query);
   var id = qs.id;
-  var cb = function(eventType, aggregateType, aggregateId, version, data) {
+  var cb = function(eventType, descriptor, event) {
     client.send(JSON.stringify({
       eventType: eventType,
-      aggregateType: aggregateType,
-      aggregateId: aggregateId,
-      version: version,
-      data: data
+      aggregateType: descriptor.aggregateType,
+      aggregateId: descriptor.aggregateId,
+      version: descriptor.aggregateVersion,
+      data: event
     }));
   }
-  bus.onAggregateId(id, cb);
+  bus.on('*', { aggregateId: id }, cb);
   client.on('close', function() {
     bus.removeAggregateIdListener(id, cb);
   });
