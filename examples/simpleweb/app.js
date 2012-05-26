@@ -26,6 +26,12 @@ app.use(express.static(__dirname + '/public'));
  */
 
 var bus = new Bus();
+
+/**
+ * Very simplistic denormalizer, which listens for specific events emitted by the
+ * domain and updates the read model.
+ */
+
 bus.on('PersonCreated', function(event, descriptor, person) {
   console.log('Person created: %s', person.name);
   var personModel = new PersonModel();
@@ -41,30 +47,6 @@ bus.on('PersonRenamed', function(event, descriptor, person) {
     personModel.name = person.name;
     personModel.version = descriptor.aggregateVersion;
     personModel.save();
-  });
-});
-
-/**
- * Optional per-aggregate push of events to client via Server-Sent Events
- */
-
-var sse = new SSE(app);
-sse.on('connection', function(client, url) {
-  var qs = querystring.parse(url.query);
-  var id = qs.id;
-  var cb = function(eventType, descriptor, event) {
-    client.send(JSON.stringify({
-      eventType: eventType,
-      aggregateType: descriptor.aggregateType,
-      aggregateId: descriptor.aggregateId,
-      aggregateVersion: descriptor.aggregateVersion,
-      data: event
-    }));
-  }
-  if (typeof id != 'undefined') bus.on('*', { aggregateId: id }, cb);
-  else bus.on('*', cb);
-  client.on('close', function() {
-    bus.removeEventListener('*', cb);
   });
 });
 
@@ -168,3 +150,28 @@ app.post('/Person/Rename', function(req, res) {
     });
   });
 });
+
+/**
+ * Optional push of events to client via Server-Sent Events
+ */
+
+var sse = new SSE(app);
+sse.on('connection', function(client, url) {
+  var qs = querystring.parse(url.query);
+  var id = qs.id;
+  var cb = function(eventType, descriptor, event) {
+    client.send(JSON.stringify({
+      eventType: eventType,
+      aggregateType: descriptor.aggregateType,
+      aggregateId: descriptor.aggregateId,
+      aggregateVersion: descriptor.aggregateVersion,
+      data: event
+    }));
+  }
+  if (typeof id != 'undefined') bus.on('*', { aggregateId: id }, cb);
+  else bus.on('*', cb);
+  client.on('close', function() {
+    bus.removeEventListener('*', cb);
+  });
+});
+
