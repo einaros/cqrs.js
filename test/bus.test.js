@@ -6,62 +6,86 @@ describe('Bus', function() {
     it('captures events with a specific type', function(done) {
       var bus = new Bus();
       var handler1Called = false;
-      bus.on('SomeEvent', function(eventType, aggregateType, aggregateId, version, data) {
+      bus.on('SomeEvent', function(eventType, descriptor, event) {
         expect(eventType).to.equal('SomeEvent');
-        expect(aggregateType).to.equal('SomeType');
-        expect(aggregateId).to.equal('SomeId');
-        expect(version).to.equal(100);
-        expect(data.a).to.equal(1);
+        expect(descriptor.aggregateType).to.equal('SomeType');
+        expect(descriptor.aggregateId).to.equal('SomeId');
+        expect(descriptor.aggregateVersion).to.equal(100);
+        expect(event.a).to.equal(1);
         handler1Called = true;
       });
       var handler2Called = false;
-      bus.on('SomeEvent', function(eventType, aggregateType, aggregateId, version, data) {
+      bus.on('SomeEvent', function(eventType, descriptor, event) {
         expect(eventType).to.equal('SomeEvent');
-        expect(aggregateType).to.equal('SomeType');
-        expect(aggregateId).to.equal('SomeId');
-        expect(version).to.equal(100);
-        expect(data.a).to.equal(1);
+        expect(descriptor.aggregateType).to.equal('SomeType');
+        expect(descriptor.aggregateId).to.equal('SomeId');
+        expect(descriptor.aggregateVersion).to.equal(100);
+        expect(event.a).to.equal(1);
         handler2Called = true;
       });
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
       expect(handler1Called).to.equal(true);
       expect(handler2Called).to.equal(true);
       done();
     });
-  });
 
-  describe('#onAggregateId', function() {
-    it('captures events for a specific aggregate id', function(done) {
+    it('can filter for descriptor value', function(done) {
       var bus = new Bus();
-      var handler1Called = false;
-      bus.onAggregateId('SomeId', function(eventType, aggregateType, aggregateId, version, data) {
+      var handlerCalled = false;
+      bus.on('SomeEvent', { 'aggregateType': 'SomeType' }, function(eventType, descriptor, event) {
         expect(eventType).to.equal('SomeEvent');
-        expect(aggregateType).to.equal('SomeType');
-        expect(aggregateId).to.equal('SomeId');
-        expect(version).to.equal(100);
-        expect(data.a).to.equal(1);
-        handler1Called = true;
+        expect(descriptor.aggregateType).to.equal('SomeType');
+        expect(descriptor.aggregateId).to.equal('SomeId');
+        expect(descriptor.aggregateVersion).to.equal(100);
+        expect(event.a).to.equal(1);
+        handlerCalled = true;
       });
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
-      expect(handler1Called).to.equal(true);
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
+      expect(handlerCalled).to.equal(true);
       done();
     });
-  });
 
-  describe('#onAggregateType', function() {
-    it('captures events for a specific aggregate type', function(done) {
+    it('can filter for more than one descriptor value', function(done) {
       var bus = new Bus();
-      var handler1Called = false;
-      bus.onAggregateType('SomeType', function(eventType, aggregateType, aggregateId, version, data) {
+      var handlerCalled = false;
+      bus.on('SomeEvent', { 'aggregateType': 'SomeType', 'aggregateVersion': 100 }, function(eventType, descriptor, event) {
         expect(eventType).to.equal('SomeEvent');
-        expect(aggregateType).to.equal('SomeType');
-        expect(aggregateId).to.equal('SomeId');
-        expect(version).to.equal(100);
-        expect(data.a).to.equal(1);
-        handler1Called = true;
+        expect(descriptor.aggregateType).to.equal('SomeType');
+        expect(descriptor.aggregateId).to.equal('SomeId');
+        expect(descriptor.aggregateVersion).to.equal(100);
+        expect(event.a).to.equal(1);
+        handlerCalled = true;
       });
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
-      expect(handler1Called).to.equal(true);
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
+      expect(handlerCalled).to.equal(true);
+      done();
+    });
+
+    it('handler will not execute when a filter value isn\'t present in descriptor', function(done) {
+      var bus = new Bus();
+      bus.on('SomeEvent', { 'aggregateType': 'SomeType', 'aggregateVersion': 100, 'nothere': 1 }, function(eventType, descriptor, event) {
+        done(new Error('must not be called'));
+      });
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
+      done();
+    });
+
+    it('can listen for all events with a custom filter', function(done) {
+      var bus = new Bus();
+      bus.on('*', { 'aggregateType': 'FooType' }, function(eventType, descriptor, event) {
+        done(new Error('must not be called'));
+      });
+      var handlerCalled = false;
+      bus.on('*', { 'aggregateType': 'SomeType' }, function(eventType, descriptor, event) {
+        expect(eventType).to.equal('SomeEvent');
+        expect(descriptor.aggregateType).to.equal('SomeType');
+        expect(descriptor.aggregateId).to.equal('SomeId');
+        expect(descriptor.aggregateVersion).to.equal(100);
+        expect(event.a).to.equal(1);
+        handlerCalled = true;
+      });
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
+      expect(handlerCalled).to.equal(true);
       done();
     });
   });
@@ -69,17 +93,16 @@ describe('Bus', function() {
   describe('#removeAllListeners', function() {
     it('removes all listeners', function(done) {
       var bus = new Bus();
-      bus.onAggregateType('SomeType', function(eventType, aggregateType, aggregateId, version, data) {
+      var handler1 = function(eventType, descriptor, event) {
         done(new Error('must not be called'));
-      });
-      bus.onAggregateId('SomeId', function(eventType, aggregateType, aggregateId, version, data) {
+      }
+      bus.on('SomeEvent', handler1);
+      var handler2 = function(eventType, descriptor, event) {
         done(new Error('must not be called'));
-      });
-      bus.on('SomeEvent', function(eventType, aggregateType, aggregateId, version, data) {
-        done(new Error('must not be called'));
-      });
+      }
+      bus.on('*', { 'aggregateType': 'SomeType' }, handler2);
       bus.removeAllListeners();
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
       done();
     });
   });
@@ -87,38 +110,17 @@ describe('Bus', function() {
   describe('#removeEventListener', function() {
     it('removes specifc event listener', function(done) {
       var bus = new Bus();
-      var cb = function(eventType, aggregateType, aggregateId, version, data) {
+      var handler1 = function(eventType, descriptor, event) {
         done(new Error('must not be called'));
-      };
-      bus.on('SomeEvent', cb);
-      bus.removeEventListener('SomeEvent', cb);
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
-      done();
-    });
-  });
-
-  describe('removeAggregateIdListener', function() {
-    it('removes specifc event listener', function(done) {
-      var bus = new Bus();
-      var cb = function(eventType, aggregateType, aggregateId, version, data) {
+      }
+      bus.on('SomeEvent', handler1);
+      var handler2 = function(eventType, descriptor, event) {
         done(new Error('must not be called'));
-      };
-      bus.onAggregateId('SomeId', cb);
-      bus.removeAggregateIdListener('SomeId', cb);
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
-      done();
-    });
-  });
-
-  describe('removeAggregateTypeListener', function() {
-    it('removes specifc event listener', function(done) {
-      var bus = new Bus();
-      var cb = function(eventType, aggregateType, aggregateId, version, data) {
-        done(new Error('must not be called'));
-      };
-      bus.onAggregateType('SomeType', cb);
-      bus.removeAggregateTypeListener('SomeType', cb);
-      bus.emit('SomeEvent', 'SomeType', 'SomeId', 100, {a: 1});
+      }
+      bus.on('*', { 'aggregateType': 'SomeType' }, handler2);
+      bus.removeEventListener('SomeEvent', handler1);
+      bus.removeEventListener('*', handler2);
+      bus.emit('SomeEvent', { aggregateType: 'SomeType', aggregateId: 'SomeId', aggregateVersion: 100}, {a: 1});
       done();
     });
   });
