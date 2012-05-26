@@ -3,16 +3,16 @@
   "name": "cqrs.js",
   "version": "0.0.1",
   "repository": {
-    "url": ""
+    "url": "https://github.com/einaros/cqrs.js"
   },
   "dependencies": {
-    "mongoose": "latest"
+    "mongoose": "2.6.5"
   },
   "devDependencies": {
-    "mocha": "latest",
-    "expect.js": "latest",
+    "mocha": "1.0.3",
+    "expect.js": "0.1.2",
     "express": "2.5.9",
-    "mongodb": "latest"
+    "mongodb": "1.0.2"
   },
   "optionalDependencies": {},
   "engines": {
