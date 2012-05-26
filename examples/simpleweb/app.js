@@ -57,13 +57,14 @@ sse.on('connection', function(client, url) {
       eventType: eventType,
       aggregateType: descriptor.aggregateType,
       aggregateId: descriptor.aggregateId,
-      version: descriptor.aggregateVersion,
+      aggregateVersion: descriptor.aggregateVersion,
       data: event
     }));
   }
-  bus.on('*', { aggregateId: id }, cb);
+  if (typeof id != 'undefined') bus.on('*', { aggregateId: id }, cb);
+  else bus.on('*', cb);
   client.on('close', function() {
-    bus.removeAggregateIdListener(id, cb);
+    bus.removeEventListener('*', cb);
   });
 });
 
@@ -95,6 +96,7 @@ var PersonModel = mongoose.model('Person', PersonSchema);
 function Person() {}
 util.inherits(Person, AggregateRoot);
 Person.prototype.rename = function(name) {
+  if (name.trim().length == 0) throw new Error('name cannot be empty');
   this.applyEvent(Event.make('PersonRenamed', {name: name}));
 }
 AggregateRoot.defineEventHandler(Person, 'PersonCreated', function(args) {
@@ -119,17 +121,44 @@ app.get('/Get/Persons', function(req, res) {
 // Commands
 
 app.post('/Person/Create', function(req, res) {
-  var person = repository.create('Person', {name: req.body.name});
+  // Validate name
+  if (!req.body.name || req.body.name.length == 0) {
+    return res.end(JSON.stringify({ok: 0, error: 'name must not be empty!'}));
+  }
+
+  // Create new aggregate
+  var person;
+  try {
+    person = repository.create('Person', {name: req.body.name});
+  }
+  catch (err) {
+    return res.end(JSON.stringify({ok: 0, error: err.message}));
+  }
+
+  // Save to repository
   var id = uuid.v4();
   repository.save('Person', id, person, -1, function(err) {
-    if (err) console.log(err);
-    res.end(id);
+    if (err) {
+      console.error(err);
+      res.end(JSON.stringify({ok: 0, error: err.message}));
+    }
+    res.end(JSON.stringify({ok: 1, id: id}));
   });
 });
 
 app.post('/Person/Rename', function(req, res) {
+  // Fetch person
+  // todo: handle error when object doesn't exist
   repository.get('Person', req.body.id, function(person) {
-    person.rename(req.body.name);
+    // Issue rename command
+    try {
+      person.rename(req.body.name);
+    }
+    catch (err) {
+      return res.end(JSON.stringify({ok: 0, error: err.message}));
+    }
+
+    // Save to repository
     repository.save('Person',req.body.id, person, req.body.version, function(err) {
       if (err) {
         console.error(err);

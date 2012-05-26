@@ -5,7 +5,9 @@
         display: -webkit-box;
         -webkit-box-pack: center;
         -webkit-box-align: center;
+        font-family: helvetica, tahoma, verdana;
       }
+
       .box {
         height: 300px;
         width: 300px;
@@ -20,20 +22,26 @@
     <script src='/jq.js'></script>
     <script>
       function init() {
-        $('.controls').empty();
-        $('.events').empty();
+        // Subscribe to all changes
+        var es = new EventSource('/sse');
+        es.onmessage = function(e) {
+          var data = JSON.parse(e.data);
+          processEvent(data);
+          $('.events').append($('<div>').text(data.eventType + ': ' + data.data.name));
+        };
+
         $.get('/Get/Persons', function(people) {
           people = JSON.parse(people);
           for (var i = 0, l = people.length; i < l; ++i) {
             var person = people[i];
 
-            // Subscribe to changes for this person
-            var es = new EventSource('/sse?id=' + person.id);
-            es.onmessage = function(e) {
-              var data = JSON.parse(e.data);
-              processEvent(data);
-              $('.events').append($('<div>').text(data.eventType + ': ' + data.data.name));
-            };
+          // // Subscribe to changes for this person
+          // var es = new EventSource('/sse?id=' + person.id);
+          // es.onmessage = function(e) {
+          //   var data = JSON.parse(e.data);
+          //   processEvent(data);
+          //   $('.events').append($('<div>').text(data.eventType + ': ' + data.data.name));
+          // };
 
             // Add rename control for this person
             var input = $('<input type="text">');
@@ -49,8 +57,25 @@
         if (e.eventType == 'PersonRenamed') {
           var input = $('input[data-id="' + e.aggregateId + '"]');
           input.attr('value', e.data.name);
-          input.attr('data-version', e.version);
+          input.attr('data-version', e.aggregateVersion);
         }
+        else if (e.eventType == 'PersonCreated') {
+          var input = $('<input type="text">');
+          input.attr('value', e.data.name);
+          input.attr('data-id', e.aggregateId);
+          input.attr('data-version', e.aggregateVersion);
+          $('.controls').append(input).append('<button onclick="rename(this)">Rename</button>');
+        }
+      }
+
+      function createPerson(btn) {
+        var input = $(btn).prev();
+        $.post('/Person/Create', {name: input.val()}, function(result) {
+          result = JSON.parse(result);
+          if (result.ok == 0) {
+            alert('Error: ' + result.error);
+          }
+        });
       }
 
       function rename(btn) {
@@ -69,7 +94,14 @@
     </script>
   </head>
   <body>
-    <div class="box controls"></div>
+    <div class="box controls">
+      <div class="new">
+        <input type="text" />
+        <input type="button" onclick="javascript:createPerson(this)" value="Create person" />
+      </div>
+      <hr/>
+      <div>Registered persons:</div>
+    </div>
     <div class="box events"></div>
   </body>
 </html>
