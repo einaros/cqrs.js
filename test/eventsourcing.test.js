@@ -75,6 +75,33 @@ describe('EventSourcing', function() {
           });
         });
       });
+
+      it('returns null if object isn\'t found', function(done) {
+        // Dummy event store
+        var store = {
+          loadEvents: function(aggregateType, aggregateId, sinceVersion, cb) {
+            cb(null);
+          },
+          saveEvents: function(aggregateType, aggregateId, expectedVersion, events, cb) {}
+        };
+
+        function ObjectType(type, id) {
+        }
+        util.inherits(ObjectType, AggregateRoot);
+        AggregateRoot.defineEventHandler(ObjectType, 'NewObjectType', function(value) {});
+
+        // Repository
+        var typeDictionary = {
+          'ObjectType': { constructor: ObjectType, creationEvent: 'NewObjectType' }
+        };
+        var repos = new Repository(store, typeDictionary);
+
+        // Use repository
+        repos.get('ObjectType', 101, function(obj) {
+          expect(obj).to.equal(null);
+          done();
+        });
+      });
     });
 
     describe('Saving Objects', function() {
